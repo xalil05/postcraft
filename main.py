@@ -1,9 +1,9 @@
 """
-CommitCraft — Mini-SaaS de génération de messages de commit
-MVP en 1 fichier, prêt à lancer sur Tailscale Funnel
+PostCraft — Générateur de posts techniques authentiques
+Un seul fichier, déploiement zéro conf
 """
 
-import json, os, sys
+import json, os, sys, random
 from pathlib import Path
 from urllib.parse import quote
 from datetime import datetime
@@ -90,8 +90,39 @@ def page(title, content):
 HOME = """
 <h1>✍️ PostCraft</h1>
 <div class="sub">
-    Des posts techniques qui ont du style. Pas de blabla corporate,<br>
-    du contenu que les devs ont envie de lire.
+    Des posts techniques authentiques. Pas de blabla corporate,<br>
+    du contenu qui ressemble à des vrais devs.
+</div>
+
+<!-- === TEMPLATES 1-CLIC === -->
+<div class="card" style="background:#0d0d1a;border-color:#2a1a4a">
+    <h2>⚡ Essayer en 1 clic</h2>
+    <div class="tpl-grid">
+        <div class="tpl-btn" onclick="loadTemplate('debug','war','linkedin','J\'ai passé 6h à debugger un bug. Une virgule manquante dans un JSON. Tout le site en 503.')">
+            <span class="tpl-icon">🔥</span>
+            <span class="tpl-label">Bug 6h</span>
+        </div>
+        <div class="tpl-btn" onclick="loadTemplate('refacto','tech','linkedin','J\'ai refactoré 2000 lignes de code legacy. Voilà comment j\'ai évité la catastrophe.')">
+            <span class="tpl-icon">🧹</span>
+            <span class="tpl-label">Refacto</span>
+        </div>
+        <div class="tpl-btn" onclick="loadTemplate('docker','tip','linkedin','Docker en prod: 3 erreurs que tout le monde fait (moi le premier).')">
+            <span class="tpl-icon">🐳</span>
+            <span class="tpl-label">Docker</span>
+        </div>
+        <div class="tpl-btn" onclick="loadTemplate('startup','war','twitter','J\'ai lancé mon premier SaaS, personne n\'est venu pendant 2 mois.')">
+            <span class="tpl-icon">🚀</span>
+            <span class="tpl-label">Solo founder</span>
+        </div>
+        <div class="tpl-btn" onclick="loadTemplate('api','thread','twitter','Comment j\'ai designé une API que même les frontends aiment (thread).')">
+            <span class="tpl-icon">🧵</span>
+            <span class="tpl-label">API thread</span>
+        </div>
+        <div class="tpl-btn" onclick="loadTemplate('prod','tech','linkedin','Le jour où j\'ai cassé la prod un vendredi 16h55.')">
+            <span class="tpl-icon">💥</span>
+            <span class="tpl-label">Prod crash</span>
+        </div>
+    </div>
 </div>
 
 <div class="card">
@@ -130,13 +161,23 @@ HOME = """
 </div>
 
 <div class="spinner" id="spinner">
-    <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+    <div class="dot"></div><div class="dot"></div><div class="dot"></div>
     <div style="font-size:12px;color:#555570;margin-top:12px">Génération en cours...</div>
 </div>
 
 <div id="result"></div>
 
 <script>
+// Templates 1-clic
+function loadTemplate(topic, tone, platform, context) {
+    document.getElementById('topic').value = topic;
+    document.getElementById('tone').value = tone;
+    document.getElementById('platform').value = platform;
+    document.getElementById('context').value = context || '';
+    document.getElementById('result').innerHTML = '';
+    window.scrollTo({top: 300, behavior: 'smooth'});
+}
+
 async function generate(e) {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
@@ -164,19 +205,27 @@ async function generate(e) {
     const data = await resp.json();
     const toneClass = {'tech':'tone-tech','war':'tone-war','tip':'tone-tip','thread':'tone-thread'}[data.tone] || 'tone-tech';
     const toneLabel = {'tech':'👨‍💻 Tech','war':'🔥 War story','tip':'💡 Astuce','thread':'🧵 Thread'}[data.tone] || data.tone;
+    const postEnc = encodeURIComponent(data.post);
+
     result.innerHTML = `
         <div class="result">
             <div class="post">${escapeHtml(data.post)}</div>
-            <div class="meta" style="display:flex;gap:8px;align-items:center">
+            <div class="meta" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
                 <span class="tone-badge ${toneClass}">${toneLabel}</span>
                 <span>📢 ${data.platform === 'linkedin' ? 'LinkedIn' : 'Twitter/X'}</span>
-                <span style="flex:1"></span>
+                <span style="flex:1;min-width:8px"></span>
                 <button class="btn btn-secondary" style="padding:6px 14px;font-size:11px" onclick="copyPost()">📋 Copier</button>
+                ${data.platform === 'linkedin'
+                    ? `<a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}" target="_blank" class="btn btn-secondary" style="padding:6px 14px;font-size:11px;text-decoration:none">💼 LinkedIn</a>`
+                    : `<a href="https://twitter.com/intent/tweet?text=${postEnc}" target="_blank" class="btn btn-secondary" style="padding:6px 14px;font-size:11px;text-decoration:none">𝕏 Tweeter</a>`}
             </div>
         </div>`;
     window._lastPost = data.post;
 }
-function escapeHtml(t) { return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>'); }
+function escapeHtml(t) {
+    if (!t) return '';
+    return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\\n/g,'<br>');
+}
 function copyPost() {
     if (!window._lastPost) return;
     navigator.clipboard.writeText(window._lastPost).then(() => {
@@ -186,6 +235,19 @@ function copyPost() {
     });
 }
 </script>
+
+<style>
+.tpl-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; }
+@media (max-width:480px) { .tpl-grid { grid-template-columns:repeat(2,1fr); } }
+.tpl-btn {
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    padding:14px 10px; background:#10101a; border:1px solid #1a1a2e;
+    border-radius:12px; cursor:pointer; transition:all 0.2s; text-align:center;
+}
+.tpl-btn:hover { border-color:#8b6cf7; background:#151525; transform:translateY(-2px); }
+.tpl-icon { font-size:22px; }
+.tpl-label { font-size:11px; font-weight:600; color:#8888a0; line-height:1.3; }
+</style>
 """
 
 @app.get("/", response_class=HTMLResponse)
